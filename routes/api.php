@@ -16,7 +16,7 @@ Route::post('/login',[AuthController::class,'login']);
 Route::post('/logout',[AuthController::class,'logout'])->middleware('auth:sanctum');
 
 //shared between Admin and Customers
-Route::middleware(['auth:sanctum','admin.customer'])->group(function(){
+Route::middleware(['auth:sanctum','role:admin|customer'])->group(function(){
     //orders
     Route::get('/orders', [OrderController::class, 'index']);//list all your orders
     Route::get('/orders/{id}', [OrderController::class, 'show']);//show only a specific order
@@ -25,7 +25,7 @@ Route::middleware(['auth:sanctum','admin.customer'])->group(function(){
     Route::post('/orders/{order}/items', [OrderController::class, 'addItem']);   // Add item
     Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'deleteItem']); // Delete item
     //payment
-    Route::post('/orders/{id}/pay', [PaymentController::class, 'payWithWallet']);  //pay an order
+    Route::post('/orders/{id}/pay', [PaymentController::class, 'payment']);  //pay an order
 });
 //special for Admin
 Route::middleware(['auth:sanctum','role:admin'])->group(function () {

@@ -6,42 +6,30 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\LoginRequest;
-use App\Models\User;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use App\Services\AuthService;
 class AuthController extends Controller
 {
+    protected $authService;
+    public function __construct(AuthService $authService){
+        $this->authService=$authService;
+    }
     public function register(RegisterRequest $request){
         $validated=$request->validated();
-        $user=User::create(['firstname'=> $validated['firstname'],'lastname'=> $validated['lastname'],'email'=> $validated['email'],'password'=>Hash::make($validated['password']),'balance'=>$validated['balance']]);
-        $user->assignRole('customer');
-        return response()->json([$user,'message'=>'stored successfully'],201);
+        $user=$this->authService->register($validated);
+        return response()->json([$user,'message'=>'تم إنشاء الحساب بنجاح'],201);
     }
     public function login(LoginRequest $request){
-        $validated=$request->validated();
-        if (!Auth::attempt($request->only('email','password'))) {
-            return response()->json(['message' => 'بيانات غير صحيحة'], 401);
-        }
-
-        $user = Auth::user();
-
-        $token = $user->createToken('welcome')->plainTextToken;
-        $user->setRememberToken($token);
-        $user->update();
+        $auth=$this->authService->login($request);
         return response()->json([
             'message' => 'تم تسجيل الدخول بنجاح',
-            'token' => $token,
-            'user' => $user
+            'token' => $auth['token'],
+            'user' => $auth['user']
         ],200);
     }
     public function logout(Request $request){
-        $request->user()->currentAccessToken()->delete();
-        $user=Auth::user();
-        $user->remember_token=null;
-        $user->update();
-
+        $message=$this->authService->logout($request);
         return response()->json([
-            'message' => 'تم تسجيل الخروج بنجاح'
+            'message' => $message
         ],200);
     }
 }

@@ -6,11 +6,38 @@
         "dev": "vite"
     },
     "devDependencies": {
+        "@popperjs/core": "^2.11.8",
         "@tailwindcss/vite": "^4.0.0",
         "axios": "^1.7.4",
+        "bootstrap": "^5.3.7",
         "concurrently": "^9.0.1",
-        "laravel-vite-plugin": "^1.2.0",
+        "sass": "^1.89.2",
+        "sass-embedded": "^1.89.2",
         "tailwindcss": "^4.0.0",
-        "vite": "^6.0.11"
-    }
+        "vite": "^6.3.5"
+    },
+    "dependencies": {
+        "gulp": "^5.0.1",
+        "laravel-vite-plugin": "^1.3.0",
+        "startbootstrap-sb-admin-2": "^3.3.7",
+        "watch": "^0.13.0"
+    },
+    "name": "ecommerce",
+    "version": "1.0.0",
+    "description": "API e-commerce that have two roles:['admin','customer'] #the guest can: -view products according to category -register an account -if he/she has an account they can directly log in and users roles are customers -only the admin user is beeing seed to the database #customer can: -all permissions of the guest are also available for customer -customer can create orders, update it or cancel it -make payments to his orders #Admin: -all permissions of customer are available for Admin -he can create and delete categories -create, delete, and update products that are offered to sell",
+    "main": "vite.config.js",
+    "directories": {
+        "test": "tests"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/tardib777/E-commerce-project.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/tardib777/E-commerce-project/issues"
+    },
+    "homepage": "https://github.com/tardib777/E-commerce-project#readme"
 }

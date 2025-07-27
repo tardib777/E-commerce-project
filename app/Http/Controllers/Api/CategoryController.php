@@ -7,25 +7,30 @@ use App\Http\Requests\CategoryRequest;
 use App\Http\Requests\RemoveCategoryRequest;
 use Illuminate\Http\Request;
 use App\Models\Category;
+use App\Services\CategoryService;
 class CategoryController extends Controller
 {
+    protected $categoryService;
+    public function __construct(CategoryService $categoryService){
+        $this->categoryService=$categoryService;
+    }
     public function index(){
-        $categories=Category::with('products')->get();
-        return response()->json([$categories,'message' => 'success'],200);
+        $categories=$this->categoryService->index();
+        return response()->json([$categories],200);
     }
     public function show($id){
-        $category=Category::findOrFail($id);
-        return response()->json([$category->products],200);
+        $products=$this->categoryService->show($id);
+        return response()->json([$products],200);
     }
     public function store(CategoryRequest $request){
         $validated=$request->validated();
-        $category=Category::create(['name' => $validated['name']]);
-        return response()->json([$category,'message' => 'created successfully'],201);
+        $category=$this->categoryService->store($validated);
+        return response()->json([$category],201);
     }
     public function destroy(RemoveCategoryRequest $request){
         $validated=$request->validated();
-        $category=Category::where('name','=',$validated['name'])->delete();
-        return response()->json([$category,'message' => 'deleted successfully'],200);
+        $message=$this->categoryService->destroy($validated);
+        return response()->json([$message],200);
 
     }
 }
