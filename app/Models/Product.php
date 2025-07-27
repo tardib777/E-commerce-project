@@ -18,7 +18,7 @@ class Product extends Model
     public function category(){
         return $this->belongsTo(Category::class);
     }
-    public function order(){
-        return $this->belongsTo(Order::class);
+    public function orderItem(){
+        return $this->hasOne(OrderItem::class);
     }
 }
