@@ -3,7 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-
+use App\Services\CategoryService;
+use App\Models\Category;
 class HomeController extends Controller
 {
     /**
@@ -11,9 +12,10 @@ class HomeController extends Controller
      *
      * @return void
      */
-    public function __construct()
+    protected $categoryService;
+    public function __construct(CategoryService $categoryService)
     {
-        $this->middleware('auth');
+        $this->categoryService=$categoryService;
     }
 
     /**
@@ -21,9 +23,10 @@ class HomeController extends Controller
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
-    public function index()
+    public function index($id=1)
     {
-        return view('home');
+        $categories=Category::all();
+        $products=$this->categoryService->index($id);
+        return view('home',compact('categories','products'));
     }
-    
 }

@@ -16,8 +16,8 @@ return new class extends Migration
             $table->foreignId('order_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->decimal('amount', 10, 2);
-            $table->enum('method', ['wallet', 'usdt', 'paypal', 'stripe'])->default('wallet');
-            $table->enum('status', ['pending', 'paid', 'failed', 'refunded'])->default('pending');
+            $table->enum('method', ['usdt', 'paypal', 'stripe']);
+            $table->enum('status', ['pending','paid', 'completed', 'failed']);
             $table->string('transaction_id')->nullable(); // if external
             $table->timestamps();
         });

@@ -16062,3 +16062,15 @@ ul {
 }
 
 /*# sourceMappingURL=styles.min.css.map */
+.left-sidebar {
+  transition: all 0.3s ease-in-out;
+  width: 260px; /* default width */
+}
+
+.sidebar-collapsed .left-sidebar {
+  margin-left: -260px; /* hide sidebar */
+}
+
+.sidebar-collapsed main {
+  flex: 1;
+}

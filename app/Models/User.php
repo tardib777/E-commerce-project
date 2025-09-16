@@ -9,11 +9,16 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Spatie\Permission\Models\Role;
-class User extends Authenticatable
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Laravel\Cashier\Billable;
+
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
     use HasRoles;
+    use Billable;
+
     /**
      * The attributes that are mass assignable.
      *
@@ -52,10 +57,6 @@ class User extends Authenticatable
     }
     public function orders(){
         return $this->hasMany(Order::class);
-    }
-    public function walletTransactions()
-    {
-        return $this->hasMany(WalletTransaction::class);
     }
     public function role(){
         return $this->hasOne(Role::class);

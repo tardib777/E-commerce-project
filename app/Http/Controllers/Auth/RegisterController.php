@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
+
 class RegisterController extends Controller
 {
     /*
@@ -28,7 +30,7 @@ class RegisterController extends Controller
      *
      * @var string
      */
-    protected $redirectTo = '/dashboard';
+    protected $redirectTo = '/home';
 
     /**
      * Create a new controller instance.
@@ -51,13 +53,21 @@ class RegisterController extends Controller
         return Validator::make($data, [
             'firstname' => ['required', 'string', 'max:255'],
             'lastname' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'email' => [
+                'required',
+                'unique:users,email',
+                Rule::email()
+                    ->rfcCompliant(strict: false)
+                    ->validateMxRecord()
+                    ->preventSpoofing()
+            ],
             'password' => ['required','confirmed',Password::min(8)
                                                         ->letters()
                                                         ->mixedCase()
                                                         ->numbers()
                                                         ->symbols()
-                            ]
+                            ],
+            'balance' => 'nullable|decimal:2'
         ]);
     }
 
@@ -78,5 +88,4 @@ class RegisterController extends Controller
         $user->assignRole('customer');
         return $user;
     }
-    
 }

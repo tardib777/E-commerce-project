@@ -34,5 +34,17 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-
+    'payment_gateways' => [
+        'paypal' => [
+            'client_id' =>env('PAYPAL_CLIENT_ID'),
+            'client_secret' =>env('PAYPAL_CLIENT_SECRET'),
+            'mode' =>env('PAYPAL_MODE')
+        ],
+        'stripe' => [
+            'key' => env('STRIPE_KEY'),
+            'secret' => env('STRIPE_SECRET'),
+        ]
+    ]
+    
+    
 ];
