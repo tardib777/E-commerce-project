@@ -1,21 +1,13 @@
 <?php
 
-namespace App\Http\Controllers\Api;
-
-use App\Http\Controllers\Controller;
+namespace App\Http\Controllers;
+use App\Models\Product;
+use App\Models\Order;
 use Illuminate\Http\Request;
-use App\Services\PaymentService;
+use Illuminate\Support\Facades\Http;
+
 class PaymentController extends Controller
 {
-    protected $paymentService;
-    public function __construct(PaymentService $paymentService){
-        $this->paymentService=$paymentService;
-    }
-    public function payment(Request $request,$orderId)
-    {
-        $array=$this->paymentService->payment($request,$orderId);
-        return response()->json([$array],200);
-        
-    }  
+    
+    
 }
-

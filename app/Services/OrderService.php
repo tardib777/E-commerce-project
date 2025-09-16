@@ -5,7 +5,9 @@ use App\Http\Requests\OrderRequest;
 use App\Http\Requests\OrderItemRequest;
 use App\Models\OrderItem;
 use App\Models\Product;
+use Exception;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class OrderService{
     public function store(array $data)
@@ -25,7 +27,7 @@ class OrderService{
         }
 
         $order = Order::create([
-            'user_id' => Auth::id(),
+            'user_id' => Auth::user()->id,
             'total_price' => $total,
             'status' => 'pending',
         ]);
@@ -40,19 +42,27 @@ class OrderService{
             ]);
         }
 
-        return ['message' => 'تم إنشاء الطلب بنجاح', 'order' => $order->load('items')];
+        return $order->load('items');
     }
 
-    public function index()
-    {
-        $orders = Order::with('items.product')->where('user_id', Auth::id())->get();
-        return response()->json($orders);
-    }
+    public function index(){
+        $orders=null;
+        $user=Auth::user();
+        if($user->hasRole('admin')){
+            $orders=Order::with('user')->get();
+        }
+        else{
+            $orders = Order::with('items.product')->where('user_id', $user->id)->get();
+        }
+        
+        return [$orders,$user];
 
+    }
+    
     public function show($id)
     {
         $order = Order::with('items.product')->where('id', $id)->where('user_id', Auth::id())->firstOrFail();
-        return response()->json($order);
+        return $order;
     }
     public function cancel($id)
     {
@@ -88,7 +98,7 @@ class OrderService{
         $item->product->available_quantity-=$item->quantity;
         $item->product->update(['available_quantity' => $item->product->available_quantity]);
         $order->update(['total_price' => $order->total_price+=$product->price * $data['quantity']]);
-        return ['message' => 'تمت إضافة المنتج بنجاح', 'item' => $item];
+        return $item;
     }
     public function deleteItem($orderId, $itemId)
     {
@@ -104,6 +114,5 @@ class OrderService{
         $order->update(['total_price' => $order->total_price-=$item->product->price * $item->quantity]);
         return 'تم حذف العنصر بنجاح';
     }
-
-
+    
 }

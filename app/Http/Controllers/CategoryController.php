@@ -4,12 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\category;
 use Illuminate\Http\Request;
-
+use App\Services\CategoryService;
 class CategoryController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
+    protected $categoryService;
+    public function __construct(CategoryService $categoryService){
+        $this->categoryService=$categoryService;
+    }
     public function index()
     {
         //
@@ -34,9 +38,8 @@ class CategoryController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(category $category)
+    public function show($id)
     {
-        //
     }
 
     /**

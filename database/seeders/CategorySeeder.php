@@ -12,6 +12,6 @@ class CategorySeeder extends Seeder
      */
     public function run(): void
     {
-        insertCategory('أجهزة الموبايل وإكسسواراتها','أجهزة اللابتوب وملحقاتها','كهربائيات','الألبسة','الأحذية','قرطاسية');
+        insertCategory('All','Phones and its accessories','Computers and its accessories','Electronics','Clothes','Shoes');
     }
 }

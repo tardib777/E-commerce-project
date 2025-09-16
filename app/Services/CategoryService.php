@@ -1,11 +1,12 @@
 <?php
 namespace App\Services;
 use App\Models\Category;
-use App\Http\Requests\RemoveCategoryRequest;
+use App\Models\Product;
 class CategoryService{
-    public function index(){
-        $categories=Category::with('products')->get();
-        return $categories;
+    public function index($id){
+        $category=Category::findOrFail($id);
+        $products=Product::whereAttachedTo($category)->get();
+        return $products;
     }
     public function show($id){
         $category=Category::findOrFail($id);
@@ -16,7 +17,9 @@ class CategoryService{
         return ["name" => $category, "message" => 'تمت إضافة الصنف بنجاح'];
     }
     public function destroy(array $data){
-        Category::where('name','=',$data['name'])->delete();
+        $category=Category::where('name',$data['name']);
+        $category->products()->detach();
+        $category->delete();
         return 'تم حذف التصنيف بنجاح';
 
     }
