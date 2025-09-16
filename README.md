@@ -1,5 +1,5 @@
 # E-commerce-project
-API e-commerce that have two roles:['admin','customer']
+An e-commerce that have two roles:['admin','customer']
 #the guest can:
 -view products according to category
 -register an account
