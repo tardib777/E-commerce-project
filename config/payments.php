@@ -13,6 +13,7 @@ return [
     'gateways' => [
         'paypal' => 'PayPal',
         'stripe' => 'Stripe',
+        'NOWPayment' => 'NOWPayment',
         
     ],
 

@@ -10,6 +10,7 @@ class PaymentFactory
     {
         return match ($method) {
             'paypal' => new PayPalGateway(),
+            'NOWPayment' => new NOWPaymentGateway(),
             default => throw new \Exception("Unsupported payment method: $method"),
         };
     }

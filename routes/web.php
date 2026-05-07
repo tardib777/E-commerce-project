@@ -3,6 +3,7 @@
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PaymentController;
@@ -19,20 +20,19 @@ Route::middleware(['auth','verified'])->group(function(){
         Route::delete('/products/delete/{id}',[ProductController::class,'destroy'])->name('products.destroy');
     });
    Route::middleware('role:customer')->group(function(){
-    Route::get('/orders/create/{id}',[OrderController::class,'create'])->name('orders.create');
-    Route::post('/orders/store',[OrderController::class,'store'])->name('orders.store');
-    Route::get('/orders/add/{product_id}/{order_id}',[OrderController::class,'addProduct'])->name('orders.addProduct');
-    Route::put('/orders/add/{order_id}', [OrderController::class,'update'])->name('orders.update');
-    Route::delete('/orders/items/delete/{order_id}/{item_id}',[OrderController::class,'deleteItem'])->name('items.delete');
-    Route::post('/orders/cancel/{id}',[OrderController::class,'cancel'])->name('orders.cancel');
-    Route::get('/payments/checkout/{order_id}',[PaymentController::class,'checkout'])->name('payments.checkout');
-    Route::get('/payments/pay/{method}/{order_id}', [PaymentController::class, 'pay'])->name('payments.pay');
-    Route::get('/payments/success/{method}/{order_id}', [PaymentController::class, 'success'])->name('payments.success');
-    Route::get('/payments/cancel/{method}/{order_id}', [PaymentController::class, 'cancel'])->name('payments.cancel');
-
+    Route::get('/orders/index',[OrderController::class,'index'])->name('orders.index');
+    Route::get('/orders/addProduct/{product_id}',[OrderController::class,'addProductPage'])->name('orders.addProductPage');
+    Route::post('/orders/addProduct',[OrderController::class,'addProduct'])->name('orders.addProduct');
+    Route::delete('/orders/product/delete/{order}/{product_id}',[OrderController::class,'removeProduct'])->name('orders.removeProduct');
+    Route::put('/orders/cancel/{order_id}',[OrderController::class,'cancel'])->name('orders.cancel');
+    Route::get('/orders/checkout/{order}',[OrderController::class,'checkout'])->name('orders.checkout');
+    Route::get('/orders/pay/{method}/{order_id}/{crypto_currency?}', [OrderController::class, 'pay'])->name('orders.payment.pay');
+    Route::get('/orders/success/{method}/{order_id}/{request?}', [OrderController::class, 'success'])->name('orders.payment.success');
+    Route::get('/orders/cancel/{method}/{order_id}/{NP_id?}', [OrderController::class, 'cancel'])->name('orders.payment.cancel');
+    Route::post('/nowpayment/callback', [OrderController::class, 'nowPaymentCallback'])->name('orders.payment.nowpayment.callback')->withoutMiddleware([VerifyCsrfToken::class]);
     });
     Route::middleware('role:admin|customer')->group(function(){
-            Route::get('/orders/index',[OrderController::class,'index'])->name('orders.index');
+            //Route::get('/orders/index',[OrderController::class,'index'])->name('orders.index');
     });
    
 });

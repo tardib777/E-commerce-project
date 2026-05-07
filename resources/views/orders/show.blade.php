@@ -41,10 +41,10 @@
                             <td>{{ $order->created_at }}</td>
                             <td>
                                 <ul class="list-unstyled mb-0">
-                                    @foreach($order->items as $item)
-                                        <li>{{ $item->product->name }} (x{{ $item->quantity }}) 
+                                    @foreach($order->products as $product)
+                                        <li>{{ $product->name }} (x{{ $product->pivot->quantity }}) 
                                             @if($order->status == 'pending')
-                                            <form action="{{ route('items.delete',[$item->order->id,$item->id]) }}" method="post">
+                                            <form action="{{ route('orders.removeProduct',[$order->id,$product->id]) }}" method="post">
                                                 @csrf
                                                 @method('DELETE')
                                                 <input type="submit" class="btn btn-danger" value="DELETE">
@@ -70,10 +70,11 @@
                                 @if($order->status == 'pending')
                                 <form action="{{ route('orders.cancel',$order->id) }}" method="post">
                                     @csrf
+                                    @method('PUT')
                                     <input type="submit" class="btn btn-danger" value="Cancel">
                 
                                 </form>
-                                <a class="btn btn-primary" href="{{ route('payments.checkout',$order->id) }}">Pay</a>
+                                    <a href="{{ route('orders.checkout',$order->id) }}" class="btn btn-success">Checkout</a>
                                 @endif
                             </td>
                         </tr>

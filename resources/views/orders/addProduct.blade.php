@@ -1,9 +1,8 @@
 @extends('layouts.app')
 @section('content')
-<h2 class="mb-4">Add Product to the order {{ $order_id }}</h2>
-<form action="{{ route('orders.update',$order_id) }}" method="post">
+<h2 class="mb-4">Add Product to an order</h2>
+<form action="{{ route('orders.addProduct') }}" method="post">
     @csrf
-    @method('PUT')
  
     <input type="hidden" class="form-control" name="product_id" value="{{ $product->id }}">
 
