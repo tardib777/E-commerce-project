@@ -82,7 +82,7 @@
                     </form>
                 @endhasrole
                 @hasrole('customer')
-                <a href="{{ toView($product->id) }}" class="btn btn-primary" id="add">Add to an order</a>
+                <a href="{{ route('orders.addProductPage', ['product_id' => $product->id]) }}" class="btn btn-primary" id="add">Add to an order</a>
                 @endrole
                 @endauth
             </div>

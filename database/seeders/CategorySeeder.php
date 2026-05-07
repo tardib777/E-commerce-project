@@ -12,6 +12,11 @@ class CategorySeeder extends Seeder
      */
     public function run(): void
     {
-        insertCategory('All','Phones and its accessories','Computers and its accessories','Electronics','Clothes','Shoes');
+        Category::create(['name' => 'All']);
+        Category::create(['name' => 'Phones and its accessories']);
+        Category::create(['name' => 'Computers and its accessories']);
+        Category::create(['name' => 'Electronics']);
+        Category::create(['name' => 'Clothes']);
+        Category::create(['name' => 'Shoes']);
     }
 }

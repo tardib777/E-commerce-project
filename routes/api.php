@@ -25,9 +25,7 @@ Route::middleware(['auth:sanctum','role:admin|customer'])->group(function(){
     Route::post('/orders/{order}/items', [OrderController::class, 'addItem']);   // Add item
     Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'deleteItem']); // Delete item
     //payment
-
-    
-
+    Route::post('/orders/{order_id}',[OrderController::class,'addOrRemoveItem']);
 });
 //special for Admin
 Route::middleware(['auth:sanctum','role:admin'])->group(function () {

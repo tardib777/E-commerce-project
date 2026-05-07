@@ -18,7 +18,8 @@ class Product extends Model
     public function categories(){
         return $this->belongsToMany(Category::class,'category_product');
     }
-    public function orderItem(){
-        return $this->hasOne(OrderItem::class);
+    public function orders()
+    {
+        return $this->belongsToMany(Order::class,'order_product')->withPivot('quantity','price')->withTimestamps();
     }
 }
