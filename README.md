@@ -309,20 +309,47 @@ NOWPAYMENT_SANDBOX_PASSWORD=
 4. **As an admin** (seeded), use the sidebar dashboard to create/delete categories and manage the product catalog.
 
 **Seeded admin account** (from `UserSeeder`):
+---
 
-| Email | Password |
-|-------|----------|
-| `tardib777@gmail.com` | `Ta@123123` |
+## 🔀 Route Files: `web.php` vs `api.php`
 
-> ⚠️ Change or remove this seeded credential before any non‑local deployment.
+The application exposes **two entirely separate routing surfaces**, registered independently in `bootstrap/app.php`. They differ in prefix, middleware stack, authentication mechanism, and response format.
+
+| | `routes/web.php` | `routes/api.php` |
+|---|---|---|
+| **URL prefix** | *(none)* — e.g. `/home`, `/orders/checkout/{order}` | `/api` — e.g. `/api/login`, `/api/orders/{id}` |
+| **Consumer** | Browser (server‑rendered Blade pages) | Headless / mobile / SPA clients (JSON) |
+| **Middleware group** | `web` (sessions, cookies, CSRF) | `api` (stateless) |
+| **Authentication** | **Session / cookie** based — the `auth` middleware (session guard) | **Token** based — the `auth:sanctum` middleware (bearer tokens) |
+| **Auth scaffolding** | `Auth::routes(['verify' => true])` from **`laravel/ui`** | Custom `Api\Auth\AuthController` + `AuthService` |
+| **Responses** | `view(...)` / `redirect(...)` | `response()->json(...)` |
+| **Verification guard** | `verified` middleware enforced | — |
+| **Controllers** | `App\Http\Controllers\*` | `App\Http\Controllers\Api\*` |
+
+Both files share the **same role middleware** (`role:` from spatie), but layer it on top of their respective authentication guards.
 
 ---
 
 ## 🔓 Authentication
 
-**Web** — `Auth::routes(['verify' => true])` (via `laravel/ui`) provides login, registration, password reset/confirm, and email verification. Authenticated + verified users pass through the `auth` and `verified` middleware; after login they are redirected to `/home`.
+The two route surfaces use **two different, independent authentication mechanisms** — it's important not to conflate them.
 
-**API** — Sanctum personal‑access tokens:
+### 1. Web — session/cookie auth via `laravel/ui`
+
+Defined in **`routes/web.php`** with `Auth::routes(['verify' => true])`, which registers the scaffolding shipped by the **`laravel/ui`** package:
+
+- Login is handled by `App\Http\Controllers\Auth\LoginController` (the `AuthenticatesUsers` trait); registration, password reset/confirm and email verification are handled by the sibling `Auth\*` controllers.
+- Authentication is **stateful**: Laravel's default **session guard** stores the authenticated user in the session and a cookie. Requests run through the `web` middleware group (**CSRF tokens**, session).
+- Protected routes require the `auth` **and** `verified` middleware; after a successful login the user is redirected to `/home`.
+- **No token is involved** — the browser is authenticated purely by its session cookie.
+
+### 2. API — token auth via Laravel Sanctum
+
+Defined in **`routes/api.php`** and handled by `App\Http\Controllers\Api\Auth\AuthController` → `AuthService`:
+
+- Authentication is **stateless**: on login, `AuthService::login()` calls `createToken()` and returns a Sanctum **personal‑access token** (`plainTextToken`).
+- Protected routes are guarded by the `auth:sanctum` middleware; there is **no session or CSRF** — every request must present the token.
+- `logout` revokes the caller's current token (`currentAccessToken()->delete()`).
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -331,7 +358,9 @@ NOWPAYMENT_SANDBOX_PASSWORD=
 | `POST` | `/api/logout` | Revokes the current token *(auth:sanctum)* |
 | `GET`  | `/api/user` | Current authenticated user *(auth:sanctum)* |
 
-Send the token as `Authorization: Bearer <token>` on protected requests.
+Send the token as `Authorization: Bearer <token>` on protected API requests.
+
+> **In short:** `web.php` → **`laravel/ui` session/cookie auth** (stateful, CSRF‑protected, cookie‑carried). `api.php` → **Sanctum token auth** (stateless, bearer‑token‑carried). They do not share a login flow or a guard.
 
 ---
 
