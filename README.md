@@ -405,6 +405,47 @@ Order 1─────*  Transaction
 
 ---
 
+## 🧭 Web Routes
+
+Server‑rendered routes defined in **`routes/web.php`**. All routes below the auth group require the `auth` + `verified` middleware; role scoping is noted per group. Handlers return Blade **views** or **redirects**.
+
+### Public
+| Method | URI | Name | Handler |
+|--------|-----|------|---------|
+| `GET` | `/` | — | Redirects to `home` |
+| `GET` | `/home/{id?}` | `home` | `HomeController@index` — storefront, optional category filter |
+| `GET` | `/products/show/{id}` | `products.show` | `ProductController@show` |
+
+### Authentication (`laravel/ui` scaffolding)
+`Auth::routes(['verify' => true])` registers login, registration, logout, password reset/confirm, and email‑verification routes.
+
+### Admin only (`auth` + `verified` + `role:admin`)
+| Method | URI | Name | Handler |
+|--------|-----|------|---------|
+| `GET` | `/products/create` | `products.create` | `ProductController@create` |
+| `POST` | `/products/store` | `products.store` | `ProductController@store` |
+| `GET` | `/products/edit/{id}` | `products.edit` | `ProductController@edit` |
+| `POST` | `/products/update/{id}` | `products.update` | `ProductController@update` |
+| `DELETE` | `/products/delete/{id}` | `products.destroy` | `ProductController@destroy` |
+
+### Customer only (`auth` + `verified` + `role:customer`)
+| Method | URI | Name | Handler |
+|--------|-----|------|---------|
+| `GET` | `/orders/index` | `orders.index` | List the customer's orders |
+| `GET` | `/orders/addProduct/{product_id}` | `orders.addProductPage` | Add‑to‑order page |
+| `POST` | `/orders/addProduct` | `orders.addProduct` | Add product to the pending order |
+| `DELETE` | `/orders/product/delete/{order}/{product_id}` | `orders.removeProduct` | Remove an item (restores stock) |
+| `PUT` | `/orders/cancel/{order_id}` | `orders.cancel` | Cancel order (restores stock) |
+| `GET` | `/orders/checkout/{order}` | `orders.checkout` | Checkout + gateway/currency selection |
+| `GET` | `/orders/pay/{method}/{order_id}/{crypto_currency?}` | `orders.payment.pay` | Start payment via the chosen gateway |
+| `GET` | `/orders/success/{method}/{order_id}/{request?}` | `orders.payment.success` | Payment success callback |
+| `GET` | `/orders/cancel/{method}/{order_id}/{NP_id?}` | `orders.payment.cancel` | Payment cancel callback |
+| `POST` | `/nowpayment/callback` | `orders.payment.nowpayment.callback` | NOWPayments IPN webhook — **CSRF‑exempt** |
+
+> All order/payment actions are handled by `App\Http\Controllers\OrderController`. Payment dispatch goes through `PaymentFactory::make($method)`.
+
+---
+
 ## 🌐 API
 
 The API is served under `/api` and returns JSON.
