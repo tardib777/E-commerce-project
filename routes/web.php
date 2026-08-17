@@ -23,7 +23,9 @@ Route::middleware(['auth','verified'])->group(function(){
     Route::put('/orders/cancel/{order_id}',[OrderController::class,'cancel'])->name('orders.cancel');
     Route::get('/orders/checkout/{order}',[OrderController::class,'checkout'])->name('orders.checkout');
     Route::get('/orders/pay/{method}/{order_id}/{currency?}', [OrderController::class, 'pay'])->name('orders.payment.pay');
-    Route::get('/orders/success/{method}/{order_id}/{request?}', [OrderController::class, 'success'])->name('orders.payment.success');
+    Route::match(['get', 'post'], '/orders/success/{method}/{order_id}/{request?}', [OrderController::class, 'success'])
+        ->name('orders.payment.success')
+        ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
     Route::get('/orders/payment/cancel/{method}/{order_id}', [OrderController::class, 'cancelPayment'])->name('orders.payment.cancel');
     });
     Route::middleware('role:admin|customer')->group(function(){

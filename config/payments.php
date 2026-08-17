@@ -12,6 +12,7 @@ return [
 
     'gateways' => [
         'paypal' => 'PayPal',
+        'visa' => 'Visa (Credit/Debit Card)',
     ],
 
     /*

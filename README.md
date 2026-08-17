@@ -2,7 +2,7 @@
 
 # 🛒 Laravel E‑Commerce Platform
 
-**A full‑stack e‑commerce application built with Laravel 12 — role‑based access control, a service‑oriented architecture, a token‑based REST API, and a pluggable payment layer (PayPal + cryptocurrency via NOWPayments).**
+**A full‑stack e‑commerce application built with Laravel 12 — role‑based access control, a service‑oriented architecture, a token‑based REST API, and a pluggable payment layer (PayPal + Visa card payments via CyberSource).**
 
 [![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
 [![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
@@ -56,9 +56,10 @@ Seeded permissions include: `manage products`, `view products`, `place orders`, 
 A `PaymentGateway` interface plus a `PaymentFactory` keep the payment layer extensible — new gateways plug in behind a common contract:
 
 - **PayPal** — via [`srmklive/paypal`](https://github.com/srmklive/laravel-paypal): create order → approve → capture, recording a `transactions` row on success.
-- **Cryptocurrency** — via **NOWPayments** (sandbox): invoice creation, a coin/currency picker at checkout, and an **IPN webhook** validated with **HMAC‑SHA512** signature comparison before the order is marked paid.
+- **Visa** — via **CyberSource Secure Acceptance Hosted Checkout** (developer.visa.com): the customer is redirected to a CyberSource-hosted card payment page; the signed result POSTs back to `orders.payment.success`, verified with **HMAC‑SHA256** before the order is marked paid.
+- Checkout only offers **real (fiat) currencies** — `USD`/`EUR`, configured in `config/payments.php` — no cryptocurrency option.
 
-> **Status note:** `config/payments.php` and the `transactions.method` enum also list **Stripe** (and `laravel/cashier` + `@stripe/stripe-js` are installed), but Stripe is **not yet wired into `PaymentFactory`** — only `paypal` and `NOWPayment` are implemented today.
+> **Status note:** `config/payments.php` and the `transactions.method` enum also list **Stripe** (and `laravel/cashier` + `@stripe/stripe-js` are installed), but Stripe is **not yet wired into `PaymentFactory`** — only `paypal` and `visa` are implemented today.
 
 ### 📦 Catalog & Categories
 - Products belong to categories through a `category_product` many‑to‑many pivot (with an "All" catch‑all category).
@@ -85,7 +86,7 @@ Service  (AuthService · ProductService · CategoryService · OrderService)
   │
   ├──►  Eloquent Models  (User · Product · Category · Order)
   │
-  └──►  PaymentFactory ──► PaymentGateway (PayPalGateway · NOWPaymentGateway)
+  └──►  PaymentFactory ──► PaymentGateway (PayPalGateway · VisaGateway)
 ```
 
 **Design patterns in use**
@@ -152,9 +153,9 @@ E-commerce-project/
 │   ├── Models/               # User, Product, Category, Order
 │   ├── Providers/            # App & Event service providers
 │   └── Services/             # Business logic
-│       └── Payments/         # PaymentFactory, PayPalGateway, NOWPaymentGateway
+│       └── Payments/         # PaymentFactory, PayPalGateway, VisaGateway
 ├── bootstrap/                # app.php (middleware aliases, routing) & providers.php
-├── config/                   # Framework + payments, paypal, NOWPayment, permission, sanctum, cashier
+├── config/                   # Framework + payments, paypal, cybersource, permission, sanctum, cashier
 ├── database/
 │   ├── factories/            # UserFactory
 │   ├── migrations/           # Schema (users, products, orders, pivots, transactions, permissions…)
@@ -252,7 +253,7 @@ The app is available at **http://127.0.0.1:8000** and redirects to the storefron
 |------|---------|
 | `config/payments.php` | Registry of available gateway keys/labels shown at checkout |
 | `config/paypal.php` | PayPal sandbox/live credentials & options |
-| `config/NOWPayment.php` | NOWPayments sandbox/live API, public & IPN keys |
+| `config/cybersource.php` | CyberSource (Visa) Secure Acceptance access key, profile ID & secret key |
 | `config/permission.php` | spatie roles/permissions configuration |
 | `config/sanctum.php` | API token / stateful‑domain settings |
 | `config/cashier.php` | Stripe/Cashier settings (installed, not yet used) |
@@ -289,15 +290,14 @@ PAYPAL_LIVE_CLIENT_SECRET=
 PAYPAL_CURRENCY=USD
 ```
 
-**NOWPayments** (`config/NOWPayment.php`)
+**Visa / CyberSource** (`config/cybersource.php`)
 ```env
-NOWPAYMENT_SANDBOX_KEY=
-NOWPAYMENT_SANDBOX_PUBLIC_KEY=
-NOWPAYMENT_SANDBOX_IPN_KEY=
-NOWPAYMENT_SANDBOX_EMAIL=
-NOWPAYMENT_SANDBOX_PASSWORD=
-# Live equivalents: NOWPAYMENT_KEY, NOWPAYMENT_PUBLIC_KEY, NOWPAYMENT_IPN_KEY
+CYBERSOURCE_MODE=sandbox
+CYBERSOURCE_ACCESS_KEY=
+CYBERSOURCE_PROFILE_ID=
+CYBERSOURCE_SECRET_KEY=
 ```
+Get sandbox credentials from [developer.visa.com](https://developer.visa.com) (CyberSource / Visa Acceptance Solutions).
 
 ---
 
@@ -305,7 +305,7 @@ NOWPAYMENT_SANDBOX_PASSWORD=
 
 1. **Browse** the storefront at `/home` and filter products by category (guest‑accessible).
 2. **Register** an account — new users are automatically assigned the `customer` role and must verify their email.
-3. **As a customer**, open a product, add it to your order, review the order, and proceed to **checkout** to pay via PayPal or cryptocurrency.
+3. **As a customer**, open a product, add it to your order, review the order, and proceed to **checkout** to choose a currency (USD/EUR) and pay via PayPal or Visa.
 4. **As an admin** (seeded), use the sidebar dashboard to create/delete categories and manage the product catalog.
 
 **Seeded admin account** (from `UserSeeder`):
@@ -387,7 +387,7 @@ Core relational model (SQLite by default):
 | `orders` | user_id, quantity, total_price, status | status ∈ `pending/paid/shipped/canceled` |
 | `category_product` | category_id, product_id | Many‑to‑many pivot |
 | `order_product` | order_id, product_id, **quantity, price** | Cart line items (pivot with payload) |
-| `transactions` | user_id, order_id, amount, method, status, transaction_id | method ∈ `paypal/stripe/NOWPayment` |
+| `transactions` | user_id, order_id, amount, method, status, transaction_id | method ∈ `paypal/stripe/NOWPayment/visa` |
 | spatie tables | roles, permissions, model pivots | RBAC |
 | framework tables | sessions, cache, jobs, personal_access_tokens | Sanctum + DB drivers |
 
@@ -505,8 +505,8 @@ The test environment forces `APP_ENV=testing`, `array` cache/session drivers, an
 - **Password hashing** via Laravel's `hashed` cast and `Hash::make`.
 - **Email verification** required before accessing protected areas.
 - **RBAC** enforced by middleware on every protected web and API route.
-- **CSRF protection** on web forms, with a **deliberate, scoped exemption** for the NOWPayments IPN callback.
-- **Signed webhooks:** the NOWPayments IPN handler recomputes an **HMAC‑SHA512** signature over the raw payload and compares it with `hash_equals` before trusting the notification.
+- **CSRF protection** on web forms, with a **deliberate, scoped exemption** on `orders.payment.success` so CyberSource's cross-site POST-back can reach it.
+- **Signed payment callbacks:** the Visa/CyberSource return handler recomputes an **HMAC‑SHA256** signature over the signed fields and compares it with `hash_equals` before trusting the result.
 - **Strong registration rules:** `RegisterRequest` enforces MX‑validated, spoof‑resistant emails and passwords requiring mixed case, numbers and symbols (min 8).
 - **API tokens** issued and revocable via Sanctum.
 
@@ -530,7 +530,7 @@ Based on the repository configuration:
 
 1. Provision **PHP 8.2+**, Composer and Node.js on the target host.
 2. `composer install --optimize-autoloader --no-dev` and `npm ci && npm run build`.
-3. Set production `.env` values (real DB, mailer, and **live** PayPal/NOWPayments keys).
+3. Set production `.env` values (real DB, mailer, and **live** PayPal/CyberSource keys).
 4. `php artisan migrate --force` and `php artisan storage:link`.
 5. Cache framework state: `php artisan config:cache route:cache view:cache`.
 6. Run a **queue worker** if/when jobs are added, and serve behind a web server (Nginx/Apache) pointing at `public/`.
