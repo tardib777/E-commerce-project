@@ -387,7 +387,7 @@ Core relational model (SQLite by default):
 | `orders` | user_id, quantity, total_price, status | status ∈ `pending/paid/shipped/canceled` |
 | `category_product` | category_id, product_id | Many‑to‑many pivot |
 | `order_product` | order_id, product_id, **quantity, price** | Cart line items (pivot with payload) |
-| `transactions` | user_id, order_id, amount, method, status, transaction_id | method ∈ `paypal/stripe/NOWPayment/visa` |
+| `transactions` | user_id, order_id, amount, method, status, transaction_id | method ∈ `paypal/visa` |
 | spatie tables | roles, permissions, model pivots | RBAC |
 | framework tables | sessions, cache, jobs, personal_access_tokens | Sanctum + DB drivers |
 

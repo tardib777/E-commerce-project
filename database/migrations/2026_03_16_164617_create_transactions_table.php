@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('order_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
             $table->decimal('amount', 10, 2);
-            $table->enum('method',['paypal','stripe','NOWPayment']);
+            $table->enum('method',['paypal','visa']);
             $table->string('status');
             $table->string('transaction_id')->nullable();
             $table->timestamps();
