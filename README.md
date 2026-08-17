@@ -1,16 +1,12 @@
-<div align="center">
-
 # 🛒 Laravel E‑Commerce Platform
 
-**A full‑stack e‑commerce application built with Laravel 12 — role‑based access control, a service‑oriented architecture, a token‑based REST API, and a pluggable payment layer (PayPal + cryptocurrency via NOWPayments).**
+**A full‑stack e‑commerce application built with Laravel 12 — role‑based access control, a service‑oriented architecture, a token‑based REST API, and a pluggable e‑payment layer (Visa/Mastercard cards + PayPal).**
 
 [![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
 [![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
 [![Sanctum](https://img.shields.io/badge/Auth-Sanctum-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com/docs/sanctum)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?style=for-the-badge&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](#-license)
-
-</div>
 
 ---
 
@@ -32,35 +28,40 @@ The codebase is organised around clean, testable boundaries: **Service classes**
 ## ✨ Key Features
 
 ### 👤 Role‑Based Access Control
+
 Powered by [`spatie/laravel-permission`](https://spatie.be/docs/laravel-permission), enforced through route middleware on **both** the web and API layers.
 
-| Role | Capabilities |
-|------|-------------|
-| **Guest** | Browse products by category, view product details, register / log in |
+| Role         | Capabilities                                                                                                                        |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Guest**    | Browse products by category, view product details, register / log in                                                                |
 | **Customer** | Everything a guest can do **+** build a pending order, add / remove items (with live stock updates), cancel orders, and pay for them |
-| **Admin** | Everything a customer can do **+** create & delete categories and full product CRUD |
+| **Admin**    | Everything a customer can do **+** create & delete categories and full product CRUD                                                 |
 
 Seeded permissions include: `manage products`, `view products`, `place orders`, `manage orders`, `manage users`, `charge wallet`, `view wallet`, `make payment`.
 
 ### 🔐 Authentication & Verification
+
 - Web authentication scaffolding via **`laravel/ui`** (login, register, password confirm/reset).
 - **Email verification** enforced (`User implements MustVerifyEmail`, routes guarded by the `verified` middleware).
 - **API authentication** via **Laravel Sanctum** tokens (register / login / logout issue and revoke tokens).
 
 ### 🛍️ Order & Inventory Management
+
 - A single **pending order** acts as the active cart; it is created on demand when the first product is added.
 - Adding a product **decrements** `available_quantity` and increases the order total; removing or cancelling **restores** stock.
 - Order status lifecycle: `pending → paid → shipped → canceled`.
 
-### 💳 Payments (Factory Pattern)
+### 💳 E‑Payments (Factory Pattern)
+
 A `PaymentGateway` interface plus a `PaymentFactory` keep the payment layer extensible — new gateways plug in behind a common contract:
 
 - **PayPal** — via [`srmklive/paypal`](https://github.com/srmklive/laravel-paypal): create order → approve → capture, recording a `transactions` row on success.
-- **Cryptocurrency** — via **NOWPayments** (sandbox): invoice creation, a coin/currency picker at checkout, and an **IPN webhook** validated with **HMAC‑SHA512** signature comparison before the order is marked paid.
+- **Card payments (Visa / Mastercard)** — hosted checkout in sandbox mode: the gateway creates a payment session, redirects the customer to the provider's secure card form, and confirms the result through a **signed webhook** validated with **HMAC** signature comparison (`hash_equals`) before the order is marked paid. No card data ever touches the application.
 
-> **Status note:** `config/payments.php` and the `transactions.method` enum also list **Stripe** (and `laravel/cashier` + `@stripe/stripe-js` are installed), but Stripe is **not yet wired into `PaymentFactory`** — only `paypal` and `NOWPayment` are implemented today.
+Both gateways share the same `pay / success / cancel` contract, so the checkout screen simply lists whatever is registered in `config/payments.php`.
 
 ### 📦 Catalog & Categories
+
 - Products belong to categories through a `category_product` many‑to‑many pivot (with an "All" catch‑all category).
 - Product images are uploaded to the `public` storage disk on create/update and cleaned up on delete.
 - Guests can filter the storefront by category.
@@ -85,57 +86,60 @@ Service  (AuthService · ProductService · CategoryService · OrderService)
   │
   ├──►  Eloquent Models  (User · Product · Category · Order)
   │
-  └──►  PaymentFactory ──► PaymentGateway (PayPalGateway · NOWPaymentGateway)
+  └──►  PaymentFactory ──► PaymentGateway (PayPalGateway · CardGateway)
 ```
 
 **Design patterns in use**
 
-| Pattern | Where |
-|---------|-------|
-| **Service Layer** | `app/Services/*` — all business logic lives here; controllers just delegate |
-| **Factory** | `PaymentFactory::make($method)` resolves a gateway implementation |
-| **Strategy / Interface** | `App\Contracts\PaymentGateway` — a common `pay/success/cancel` contract |
-| **Constructor Dependency Injection** | Services injected into controllers via Laravel's container |
-| **Form Request validation** | `app/Http/Requests/*` |
-| **Eloquent relationships** | Models expose the relations consumed by services |
+| Pattern                              | Where                                                                       |
+| ------------------------------------ | --------------------------------------------------------------------------- |
+| **Service Layer**                    | `app/Services/*` — all business logic lives here; controllers just delegate |
+| **Factory**                          | `PaymentFactory::make($method)` resolves a gateway implementation           |
+| **Strategy / Interface**             | `App\Contracts\PaymentGateway` — a common `pay/success/cancel` contract     |
+| **Constructor Dependency Injection** | Services injected into controllers via Laravel's container                  |
+| **Form Request validation**          | `app/Http/Requests/*`                                                       |
+| **Eloquent relationships**           | Models expose the relations consumed by services                            |
 
 ---
 
 ## 🧰 Technology Stack
 
 ### Backend
-| Technology | Purpose |
-|------------|---------|
-| **PHP 8.2+** | Language |
-| **Laravel 12** | Application framework |
-| **Laravel Sanctum** | API token authentication |
-| **Laravel UI** | Web auth scaffolding (Bootstrap) |
-| **spatie/laravel-permission** | Roles & permissions |
-| **srmklive/paypal** | PayPal REST integration |
-| **paypal/paypal-server-sdk** | PayPal SDK (installed) |
-| **Laravel Cashier** | Stripe billing (installed; not yet used) |
-| **tightenco/ziggy** | Expose named routes to JavaScript |
-| **Laravel Tinker** | REPL |
+
+| Technology                    | Purpose                           |
+| ----------------------------- | --------------------------------- |
+| **PHP 8.2+**                  | Language                          |
+| **Laravel 12**                | Application framework             |
+| **Laravel Sanctum**           | API token authentication          |
+| **Laravel UI**                | Web auth scaffolding (Bootstrap)  |
+| **spatie/laravel-permission** | Roles & permissions               |
+| **srmklive/paypal**           | PayPal REST integration           |
+| **paypal/paypal-server-sdk**  | PayPal SDK (installed)            |
+| **Laravel HTTP client**       | Card gateway REST calls           |
+| **tightenco/ziggy**           | Expose named routes to JavaScript |
+| **Laravel Tinker**            | REPL                              |
 
 ### Frontend
-| Technology | Purpose |
-|------------|---------|
-| **Blade** | Server‑side templating |
-| **Bootstrap 5** | UI framework / layout |
-| **jQuery** | DOM utilities used by the admin theme |
-| **ApexCharts, Tabler Icons, SimpleBar** | Bundled admin dashboard theme assets |
-| **Tailwind CSS 4** | Installed & configured via Vite plugin |
-| **Sass** | `resources/sass/app.scss` compiled by Vite |
-| **@paypal/paypal-js, @stripe/stripe-js** | Client‑side payment SDKs (installed) |
+
+| Technology                              | Purpose                                    |
+| --------------------------------------- | ------------------------------------------ |
+| **Blade**                               | Server‑side templating                     |
+| **Bootstrap 5**                         | UI framework / layout                      |
+| **jQuery**                              | DOM utilities used by the admin theme      |
+| **ApexCharts, Tabler Icons, SimpleBar** | Bundled admin dashboard theme assets       |
+| **Tailwind CSS 4**                      | Installed & configured via Vite plugin     |
+| **Sass**                                | `resources/sass/app.scss` compiled by Vite |
+| **@paypal/paypal-js**                   | Client‑side PayPal SDK                     |
 
 ### Data, Build & Tooling
-| Area | Technology |
-|------|-----------|
-| **Database** | SQLite by default (MySQL/PostgreSQL supported via config) |
-| **Build tool** | Vite 6 + `laravel-vite-plugin` |
-| **Testing** | PHPUnit 11, Mockery, Faker |
-| **Dev tooling** | Laravel Pint (formatting), Pail (log tailing), Sail (Docker), Collision |
-| **Queue / Cache / Sessions** | Database drivers (tables migrated) |
+
+| Area                         | Technology                                                              |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| **Database**                 | SQLite by default (MySQL/PostgreSQL supported via config)               |
+| **Build tool**               | Vite 6 + `laravel-vite-plugin`                                          |
+| **Testing**                  | PHPUnit 11, Mockery, Faker                                              |
+| **Dev tooling**              | Laravel Pint (formatting), Pail (log tailing), Sail (Docker), Collision |
+| **Queue / Cache / Sessions** | Database drivers (tables migrated)                                      |
 
 ---
 
@@ -152,9 +156,9 @@ E-commerce-project/
 │   ├── Models/               # User, Product, Category, Order
 │   ├── Providers/            # App & Event service providers
 │   └── Services/             # Business logic
-│       └── Payments/         # PaymentFactory, PayPalGateway, NOWPaymentGateway
+│       └── Payments/         # PaymentFactory, PayPalGateway, CardGateway
 ├── bootstrap/                # app.php (middleware aliases, routing) & providers.php
-├── config/                   # Framework + payments, paypal, NOWPayment, permission, sanctum, cashier
+├── config/                   # Framework + payments, paypal, card, permission, sanctum
 ├── database/
 │   ├── factories/            # UserFactory
 │   ├── migrations/           # Schema (users, products, orders, pivots, transactions, permissions…)
@@ -162,7 +166,7 @@ E-commerce-project/
 ├── public/                   # Front controller + compiled admin theme assets
 ├── resources/
 │   ├── css/ · sass/          # Styles (Tailwind entry + Sass)
-│   ├── js/                   # Vite entry, bootstrap, paypal/stripe helpers
+│   ├── js/                   # Vite entry, bootstrap, payment helpers
 │   └── views/                # Blade templates (auth, home, orders, products, payments, layouts)
 ├── routes/
 │   ├── web.php               # Storefront, dashboard & payment routes
@@ -172,92 +176,105 @@ E-commerce-project/
 ├── composer.json · package.json · vite.config.js · phpunit.xml
 ```
 
-| Folder | Responsibility |
-|--------|----------------|
-| `app/Services` | All business logic; the heart of the application |
-| `app/Services/Payments` | Gateway implementations + the factory that selects them |
-| `app/Http/Requests` | Input validation, decoupled from controllers |
-| `database/migrations` | Full relational schema |
-| `database/seeders` | Bootstraps roles, permissions, categories, demo products, and an admin |
-| `resources/views` | Blade UI for both storefront and admin dashboard |
+| Folder                  | Responsibility                                                         |
+| ----------------------- | ---------------------------------------------------------------------- |
+| `app/Services`          | All business logic; the heart of the application                       |
+| `app/Services/Payments` | Gateway implementations + the factory that selects them                |
+| `app/Http/Requests`     | Input validation, decoupled from controllers                           |
+| `database/migrations`   | Full relational schema                                                 |
+| `database/seeders`      | Bootstraps roles, permissions, categories, demo products, and an admin |
+| `resources/views`       | Blade UI for both storefront and admin dashboard                       |
 
 ---
 
 ## 🚀 Installation
 
 ### Prerequisites
+
 - **PHP 8.2+** with common extensions (`pdo_sqlite` or your DB driver of choice)
 - **Composer**
 - **Node.js 18+** and **npm**
 
 ### 1. Clone
-```bash
+
+```
 git clone https://github.com/tardib777/E-commerce-project.git
 cd E-commerce-project
 ```
 
 ### 2. Install dependencies
-```bash
+
+```
 composer install
 npm install
 ```
 
 ### 3. Environment
-```bash
+
+```
 # No .env.example is tracked in this repo — create a .env, then generate a key:
 php artisan key:generate
 ```
+
 Populate the variables listed in [Environment Variables](#-environment-variables).
 
 ### 4. Database
+
 The default connection is **SQLite**. Create the database file and migrate + seed:
-```bash
+
+```
 # SQLite (default)
 type nul > database/database.sqlite   # Windows
 # touch database/database.sqlite       # macOS/Linux
 
 php artisan migrate --seed
 ```
+
 To use MySQL/PostgreSQL instead, set `DB_CONNECTION` and the related `DB_*` variables in `.env`, then run `php artisan migrate --seed`.
 
 ### 5. Storage
+
 Product images are served from the public disk — link storage:
-```bash
+
+```
 php artisan storage:link
 ```
 
 ### 6. Build the frontend
-```bash
+
+```
 npm run dev      # development (hot reload)
 # or
 npm run build    # production assets
 ```
 
 ### 7. Run
-```bash
+
+```
 php artisan serve
 ```
+
 Or start the whole dev stack (server + queue worker + log tail + Vite) in one command:
-```bash
+
+```
 composer run dev
 ```
 
-The app is available at **http://127.0.0.1:8000** and redirects to the storefront (`/home`).
+The app is available at **<http://127.0.0.1:8000>** and redirects to the storefront (`/home`).
 
 ---
 
 ## ⚙️ Configuration
 
-| File | Purpose |
-|------|---------|
-| `config/payments.php` | Registry of available gateway keys/labels shown at checkout |
-| `config/paypal.php` | PayPal sandbox/live credentials & options |
-| `config/NOWPayment.php` | NOWPayments sandbox/live API, public & IPN keys |
-| `config/permission.php` | spatie roles/permissions configuration |
-| `config/sanctum.php` | API token / stateful‑domain settings |
-| `config/cashier.php` | Stripe/Cashier settings (installed, not yet used) |
-| `config/database.php` | Default connection is `sqlite` |
-| `bootstrap/app.php` | Registers middleware aliases (`auth`, `role`, `verified`, `stateful`) and route files |
+| File                    | Purpose                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------- |
+| `config/payments.php`   | Registry of available gateway keys/labels shown at checkout                           |
+| `config/paypal.php`     | PayPal sandbox/live credentials & options                                             |
+| `config/card.php`       | Card gateway (Visa/Mastercard) sandbox/live API, public & webhook keys                |
+| `config/permission.php` | spatie roles/permissions configuration                                                |
+| `config/sanctum.php`    | API token / stateful‑domain settings                                                  |
+| `config/database.php`   | Default connection is `sqlite`                                                        |
+| `bootstrap/app.php`     | Registers middleware aliases (`auth`, `role`, `verified`, `stateful`) and route files |
 
 ---
 
@@ -266,7 +283,8 @@ The app is available at **http://127.0.0.1:8000** and redirects to the storefron
 > No `.env.example` is committed, so the following are **inferred from `config/*`**. Only the payment‑specific keys are project‑specific; the rest are standard Laravel variables.
 
 **Core**
-```env
+
+```
 APP_NAME="E-Commerce"
 APP_ENV=local
 APP_KEY=              # php artisan key:generate
@@ -280,7 +298,8 @@ MAIL_MAILER=log       # required for email verification / password reset
 ```
 
 **PayPal** (`config/paypal.php`)
-```env
+
+```
 PAYPAL_MODE=sandbox
 PAYPAL_SANDBOX_CLIENT_ID=
 PAYPAL_SANDBOX_CLIENT_SECRET=
@@ -289,14 +308,15 @@ PAYPAL_LIVE_CLIENT_SECRET=
 PAYPAL_CURRENCY=USD
 ```
 
-**NOWPayments** (`config/NOWPayment.php`)
-```env
-NOWPAYMENT_SANDBOX_KEY=
-NOWPAYMENT_SANDBOX_PUBLIC_KEY=
-NOWPAYMENT_SANDBOX_IPN_KEY=
-NOWPAYMENT_SANDBOX_EMAIL=
-NOWPAYMENT_SANDBOX_PASSWORD=
-# Live equivalents: NOWPAYMENT_KEY, NOWPAYMENT_PUBLIC_KEY, NOWPAYMENT_IPN_KEY
+**Card payments — Visa / Mastercard** (`config/card.php`)
+
+```
+CARD_MODE=sandbox
+CARD_SANDBOX_KEY=
+CARD_SANDBOX_PUBLIC_KEY=
+CARD_SANDBOX_WEBHOOK_SECRET=
+CARD_CURRENCY=USD
+# Live equivalents: CARD_KEY, CARD_PUBLIC_KEY, CARD_WEBHOOK_SECRET
 ```
 
 ---
@@ -305,26 +325,27 @@ NOWPAYMENT_SANDBOX_PASSWORD=
 
 1. **Browse** the storefront at `/home` and filter products by category (guest‑accessible).
 2. **Register** an account — new users are automatically assigned the `customer` role and must verify their email.
-3. **As a customer**, open a product, add it to your order, review the order, and proceed to **checkout** to pay via PayPal or cryptocurrency.
+3. **As a customer**, open a product, add it to your order, review the order, and proceed to **checkout** to pay by **Visa/Mastercard** or **PayPal**.
 4. **As an admin** (seeded), use the sidebar dashboard to create/delete categories and manage the product catalog.
 
-**Seeded admin account** (from `UserSeeder`):
+**Seeded admin account** (from `UserSeeder`).
+
 ---
 
 ## 🔀 Route Files: `web.php` vs `api.php`
 
 The application exposes **two entirely separate routing surfaces**, registered independently in `bootstrap/app.php`. They differ in prefix, middleware stack, authentication mechanism, and response format.
 
-| | `routes/web.php` | `routes/api.php` |
-|---|---|---|
-| **URL prefix** | *(none)* — e.g. `/home`, `/orders/checkout/{order}` | `/api` — e.g. `/api/login`, `/api/orders/{id}` |
-| **Consumer** | Browser (server‑rendered Blade pages) | Headless / mobile / SPA clients (JSON) |
-| **Middleware group** | `web` (sessions, cookies, CSRF) | `api` (stateless) |
-| **Authentication** | **Session / cookie** based — the `auth` middleware (session guard) | **Token** based — the `auth:sanctum` middleware (bearer tokens) |
-| **Auth scaffolding** | `Auth::routes(['verify' => true])` from **`laravel/ui`** | Custom `Api\Auth\AuthController` + `AuthService` |
-| **Responses** | `view(...)` / `redirect(...)` | `response()->json(...)` |
-| **Verification guard** | `verified` middleware enforced | — |
-| **Controllers** | `App\Http\Controllers\*` | `App\Http\Controllers\Api\*` |
+|                        | `routes/web.php`                                                   | `routes/api.php`                                                |
+| ---------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------- |
+| **URL prefix**         | *(none)* — e.g. `/home`, `/orders/checkout/{order}`                | `/api` — e.g. `/api/login`, `/api/orders/{id}`                  |
+| **Consumer**           | Browser (server‑rendered Blade pages)                              | Headless / mobile / SPA clients (JSON)                          |
+| **Middleware group**   | `web` (sessions, cookies, CSRF)                                    | `api` (stateless)                                               |
+| **Authentication**     | **Session / cookie** based — the `auth` middleware (session guard) | **Token** based — the `auth:sanctum` middleware (bearer tokens) |
+| **Auth scaffolding**   | `Auth::routes(['verify' => true])` from **`laravel/ui`**           | Custom `Api\Auth\AuthController` + `AuthService`                |
+| **Responses**          | `view(...)` / `redirect(...)`                                      | `response()->json(...)`                                         |
+| **Verification guard** | `verified` middleware enforced                                     | —                                                               |
+| **Controllers**        | `App\Http\Controllers\*`                                           | `App\Http\Controllers\Api\*`                                    |
 
 Both files share the **same role middleware** (`role:` from spatie), but layer it on top of their respective authentication guards.
 
@@ -351,12 +372,12 @@ Defined in **`routes/api.php`** and handled by `App\Http\Controllers\Api\Auth\Au
 - Protected routes are guarded by the `auth:sanctum` middleware; there is **no session or CSRF** — every request must present the token.
 - `logout` revokes the caller's current token (`currentAccessToken()->delete()`).
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/register` | Create a customer account |
-| `POST` | `/api/login` | Returns a bearer token |
-| `POST` | `/api/logout` | Revokes the current token *(auth:sanctum)* |
-| `GET`  | `/api/user` | Current authenticated user *(auth:sanctum)* |
+| Method | Endpoint        | Description                                 |
+| ------ | --------------- | ------------------------------------------- |
+| `POST` | `/api/register` | Create a customer account                   |
+| `POST` | `/api/login`    | Returns a bearer token                      |
+| `POST` | `/api/logout`   | Revokes the current token *(auth:sanctum)*  |
+| `GET`  | `/api/user`     | Current authenticated user *(auth:sanctum)* |
 
 Send the token as `Authorization: Bearer <token>` on protected API requests.
 
@@ -379,17 +400,17 @@ Roles and permissions are managed by **spatie/laravel-permission** and enforced 
 
 Core relational model (SQLite by default):
 
-| Table | Key columns | Notes |
-|-------|-------------|-------|
-| `users` | firstname, lastname, email (unique), password, email_verified_at | Sanctum + spatie traits, `MustVerifyEmail` |
-| `categories` | name | Includes an "All" catch‑all |
-| `products` | name, description, price, available_quantity, category_id, image | |
-| `orders` | user_id, quantity, total_price, status | status ∈ `pending/paid/shipped/canceled` |
-| `category_product` | category_id, product_id | Many‑to‑many pivot |
-| `order_product` | order_id, product_id, **quantity, price** | Cart line items (pivot with payload) |
-| `transactions` | user_id, order_id, amount, method, status, transaction_id | method ∈ `paypal/stripe/NOWPayment` |
-| spatie tables | roles, permissions, model pivots | RBAC |
-| framework tables | sessions, cache, jobs, personal_access_tokens | Sanctum + DB drivers |
+| Table              | Key columns                                                        | Notes                                      |
+| ------------------ | ------------------------------------------------------------------ | ------------------------------------------ |
+| `users`            | firstname, lastname, email (unique), password, email\_verified\_at | Sanctum + spatie traits, `MustVerifyEmail` |
+| `categories`       | name                                                               | Includes an "All" catch‑all                |
+| `products`         | name, description, price, available\_quantity, category\_id, image |                                            |
+| `orders`           | user\_id, quantity, total\_price, status                           | status ∈ `pending/paid/shipped/canceled`   |
+| `category_product` | category\_id, product\_id                                          | Many‑to‑many pivot                         |
+| `order_product`    | order\_id, product\_id, **quantity, price**                        | Cart line items (pivot with payload)       |
+| `transactions`     | user\_id, order\_id, amount, method, status, transaction\_id       | method ∈ `paypal/card`                     |
+| spatie tables      | roles, permissions, model pivots                                   | RBAC                                       |
+| framework tables   | sessions, cache, jobs, personal\_access\_tokens                    | Sanctum + DB drivers                       |
 
 **Relationships**
 
@@ -410,37 +431,41 @@ Order 1─────*  Transaction
 Server‑rendered routes defined in **`routes/web.php`**. All routes below the auth group require the `auth` + `verified` middleware; role scoping is noted per group. Handlers return Blade **views** or **redirects**.
 
 ### Public
-| Method | URI | Name | Handler |
-|--------|-----|------|---------|
-| `GET` | `/` | — | Redirects to `home` |
-| `GET` | `/home/{id?}` | `home` | `HomeController@index` — storefront, optional category filter |
-| `GET` | `/products/show/{id}` | `products.show` | `ProductController@show` |
+
+| Method | URI                   | Name            | Handler                                                       |
+| ------ | --------------------- | --------------- | ------------------------------------------------------------- |
+| `GET`  | `/`                   | —               | Redirects to `home`                                           |
+| `GET`  | `/home/{id?}`         | `home`          | `HomeController@index` — storefront, optional category filter |
+| `GET`  | `/products/show/{id}` | `products.show` | `ProductController@show`                                      |
 
 ### Authentication (`laravel/ui` scaffolding)
+
 `Auth::routes(['verify' => true])` registers login, registration, logout, password reset/confirm, and email‑verification routes.
 
 ### Admin only (`auth` + `verified` + `role:admin`)
-| Method | URI | Name | Handler |
-|--------|-----|------|---------|
-| `GET` | `/products/create` | `products.create` | `ProductController@create` |
-| `POST` | `/products/store` | `products.store` | `ProductController@store` |
-| `GET` | `/products/edit/{id}` | `products.edit` | `ProductController@edit` |
-| `POST` | `/products/update/{id}` | `products.update` | `ProductController@update` |
+
+| Method   | URI                     | Name               | Handler                     |
+| -------- | ----------------------- | ------------------ | --------------------------- |
+| `GET`    | `/products/create`      | `products.create`  | `ProductController@create`  |
+| `POST`   | `/products/store`       | `products.store`   | `ProductController@store`   |
+| `GET`    | `/products/edit/{id}`   | `products.edit`    | `ProductController@edit`    |
+| `POST`   | `/products/update/{id}` | `products.update`  | `ProductController@update`  |
 | `DELETE` | `/products/delete/{id}` | `products.destroy` | `ProductController@destroy` |
 
 ### Customer only (`auth` + `verified` + `role:customer`)
-| Method | URI | Name | Handler |
-|--------|-----|------|---------|
-| `GET` | `/orders/index` | `orders.index` | List the customer's orders |
-| `GET` | `/orders/addProduct/{product_id}` | `orders.addProductPage` | Add‑to‑order page |
-| `POST` | `/orders/addProduct` | `orders.addProduct` | Add product to the pending order |
-| `DELETE` | `/orders/product/delete/{order}/{product_id}` | `orders.removeProduct` | Remove an item (restores stock) |
-| `PUT` | `/orders/cancel/{order_id}` | `orders.cancel` | Cancel order (restores stock) |
-| `GET` | `/orders/checkout/{order}` | `orders.checkout` | Checkout + gateway/currency selection |
-| `GET` | `/orders/pay/{method}/{order_id}/{crypto_currency?}` | `orders.payment.pay` | Start payment via the chosen gateway |
-| `GET` | `/orders/success/{method}/{order_id}/{request?}` | `orders.payment.success` | Payment success callback |
-| `GET` | `/orders/cancel/{method}/{order_id}/{NP_id?}` | `orders.payment.cancel` | Payment cancel callback |
-| `POST` | `/nowpayment/callback` | `orders.payment.nowpayment.callback` | NOWPayments IPN webhook — **CSRF‑exempt** |
+
+| Method   | URI                                              | Name                             | Handler                                |
+| -------- | ------------------------------------------------ | -------------------------------- | -------------------------------------- |
+| `GET`    | `/orders/index`                                  | `orders.index`                   | List the customer's orders             |
+| `GET`    | `/orders/addProduct/{product_id}`                | `orders.addProductPage`          | Add‑to‑order page                      |
+| `POST`   | `/orders/addProduct`                             | `orders.addProduct`              | Add product to the pending order       |
+| `DELETE` | `/orders/product/delete/{order}/{product_id}`    | `orders.removeProduct`           | Remove an item (restores stock)        |
+| `PUT`    | `/orders/cancel/{order_id}`                      | `orders.cancel`                  | Cancel order (restores stock)          |
+| `GET`    | `/orders/checkout/{order}`                       | `orders.checkout`                | Checkout + payment method selection    |
+| `GET`    | `/orders/pay/{method}/{order_id}`                | `orders.payment.pay`             | Start payment via the chosen gateway   |
+| `GET`    | `/orders/success/{method}/{order_id}/{request?}` | `orders.payment.success`         | Payment success callback               |
+| `GET`    | `/orders/cancel/{method}/{order_id}`             | `orders.payment.cancel`          | Payment cancel callback                |
+| `POST`   | `/payments/callback`                             | `orders.payment.card.callback`   | Card gateway webhook — **CSRF‑exempt** |
 
 > All order/payment actions are handled by `App\Http\Controllers\OrderController`. Payment dispatch goes through `PaymentFactory::make($method)`.
 
@@ -451,24 +476,27 @@ Server‑rendered routes defined in **`routes/web.php`**. All routes below the a
 The API is served under `/api` and returns JSON.
 
 ### Public
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/categories` | List categories |
-| `GET` | `/api/categories/{id}` | Products in a category |
-| `POST` | `/api/register` · `/api/login` | Auth |
+
+| Method | Endpoint                       | Description            |
+| ------ | ------------------------------ | ---------------------- |
+| `GET`  | `/api/categories`              | List categories        |
+| `GET`  | `/api/categories/{id}`         | Products in a category |
+| `POST` | `/api/register` · `/api/login` | Auth                   |
 
 ### Admin only (`auth:sanctum` + `role:admin`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/categories/store` | Create category |
-| `POST` | `/api/categories/delete` | Delete category by name |
-| `POST` | `/api/products/create` | Create product |
-| `PUT` | `/api/products/update/{id}` | Update product |
-| `DELETE` | `/api/products/delete/{id}` | Delete product |
+
+| Method   | Endpoint                    | Description             |
+| -------- | --------------------------- | ----------------------- |
+| `POST`   | `/api/categories/store`     | Create category         |
+| `POST`   | `/api/categories/delete`    | Delete category by name |
+| `POST`   | `/api/products/create`      | Create product          |
+| `PUT`    | `/api/products/update/{id}` | Update product          |
+| `DELETE` | `/api/products/delete/{id}` | Delete product          |
 
 ### Customer / Admin (`auth:sanctum` + `role:admin|customer`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
+
+| Method | Endpoint                 | Description                    |
+| ------ | ------------------------ | ------------------------------ |
 | `POST` | `/api/orders/{order_id}` | Add/remove an item on an order |
 
 **Response format:** controllers return `response()->json([...], <status>)`; validation failures return Laravel's standard `422` error payload. Requests are validated through Form Request classes (`ProductRequest`, `CategoryRequest`, `RegisterRequest`, …).
@@ -491,7 +519,7 @@ The API is served under `/api` and returns JSON.
 
 The project is configured for **PHPUnit 11** with separate `Unit` and `Feature` suites (`phpunit.xml`). The repository currently contains the framework's **example tests only**.
 
-```bash
+```
 php artisan test
 # or
 ./vendor/bin/phpunit
@@ -506,8 +534,9 @@ The test environment forces `APP_ENV=testing`, `array` cache/session drivers, an
 - **Password hashing** via Laravel's `hashed` cast and `Hash::make`.
 - **Email verification** required before accessing protected areas.
 - **RBAC** enforced by middleware on every protected web and API route.
-- **CSRF protection** on web forms, with a **deliberate, scoped exemption** for the NOWPayments IPN callback.
-- **Signed webhooks:** the NOWPayments IPN handler recomputes an **HMAC‑SHA512** signature over the raw payload and compares it with `hash_equals` before trusting the notification.
+- **No card data stored or handled:** card details are entered on the gateway's hosted page, so the application never sees or persists a PAN.
+- **CSRF protection** on web forms, with a **deliberate, scoped exemption** for the card gateway webhook.
+- **Signed webhooks:** the callback handler recomputes an **HMAC** signature over the raw payload and compares it with `hash_equals` before trusting the notification.
 - **Strong registration rules:** `RegisterRequest` enforces MX‑validated, spoof‑resistant emails and passwords requiring mixed case, numbers and symbols (min 8).
 - **API tokens** issued and revocable via Sanctum.
 
@@ -531,7 +560,7 @@ Based on the repository configuration:
 
 1. Provision **PHP 8.2+**, Composer and Node.js on the target host.
 2. `composer install --optimize-autoloader --no-dev` and `npm ci && npm run build`.
-3. Set production `.env` values (real DB, mailer, and **live** PayPal/NOWPayments keys).
+3. Set production `.env` values (real DB, mailer, and **live** PayPal and card‑gateway keys).
 4. `php artisan migrate --force` and `php artisan storage:link`.
 5. Cache framework state: `php artisan config:cache route:cache view:cache`.
 6. Run a **queue worker** if/when jobs are added, and serve behind a web server (Nginx/Apache) pointing at `public/`.
@@ -555,7 +584,7 @@ Based on the repository configuration:
 Natural extensions of the current architecture:
 
 - **Complete the REST API** order endpoints (implement list, show, create, cancel, item management) to match the web flow.
-- **Implement the Stripe gateway** behind the existing `PaymentGateway` interface (config, enum and client SDK are already present).
+- **Add saved payment methods** so returning customers can re‑use a stored card token.
 - Introduce **queued notifications** (e.g. order confirmation emails) using the already‑migrated jobs table.
 - Add **feature tests** covering the order lifecycle, RBAC, and payment callbacks.
 - Extract an **`uploadFile()` helper** into a committed, autoloaded helpers file (it is referenced by `ProductService` but not defined in the tracked source).
