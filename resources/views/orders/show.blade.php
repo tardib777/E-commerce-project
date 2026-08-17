@@ -42,7 +42,7 @@
                             <td>
                                 <ul class="list-unstyled mb-0">
                                     @foreach($order->products as $product)
-                                        <li>{{ $product->name }} (x{{ $product->pivot->quantity }}) 
+                                        <li>{{ $product->name }} (x{{ $product->pivot->quantity }})
                                             @if($order->status == 'pending')
                                             <form action="{{ route('orders.removeProduct',[$order->id,$product->id]) }}" method="post">
                                                 @csrf
@@ -56,12 +56,12 @@
                             </td>
                             <td>${{ number_format($order->total_price, 2) }}</td>
                             <td>
-                                <span class="badge 
-                                    @if($order->status == 'pending') bg-warning 
+                                <span class="badge
+                                    @if($order->status == 'pending') bg-warning
                                     @elseif($order->status == 'paid') bg-secondary
-                                    @elseif($order->status == 'completed') bg-success 
-                                    @elseif($order->status == 'cancelled') bg-danger 
-                                    @else bg-secondary 
+                                    @elseif($order->status == 'completed') bg-success
+                                    @elseif($order->status == 'cancelled') bg-danger
+                                    @else bg-secondary
                                     @endif">
                                     {{ ucfirst($order->status) }}
                                 </span>
@@ -72,10 +72,9 @@
                                     @csrf
                                     @method('PUT')
                                     <input type="submit" class="btn btn-danger" value="Cancel">
-                
+
                                 </form>
                                     <a href="{{ route('orders.checkout',$order->id) }}" class="btn btn-success">Checkout</a>
-                                    <a href="{{ route('orders.payment.check',$order->id) }}" class="btn btn-info mt-1">Check payment status</a>
                                 @endif
                             </td>
                         </tr>

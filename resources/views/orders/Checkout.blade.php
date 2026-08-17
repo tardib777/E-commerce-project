@@ -23,27 +23,28 @@
                 </span>
             @enderror
         </div>
-           <div class="row mb-3">
-        <label for="crypto_currency" class="col-md-4 col-form-label text-md-end">
-            {{ __('Select Cryptocurrency') }}
+    </div>
+
+    <div class="row mb-3">
+        <label for="currency" class="col-md-4 col-form-label text-md-end">
+            {{ __('Currency') }}
         </label>
 
         <div class="col-md-6">
-            <select id="crypto_currency" name="crypto_currency" class="form-control">
-                <option value="">-- Select a cryptocurrency --</option>
-                @foreach($currencies as $currency)
-                    <option value="{{ $currency }}">{{ $currency }}</option>
+            <select id="currency" name="currency" class="form-control" required>
+                @foreach($currencies as $code => $label)
+                    <option value="{{ $code }}" @selected($code === 'USD')>{{ $label }}</option>
                 @endforeach
             </select>
 
-            @error('crypto_currency')
+            @error('currency')
                 <span class="invalid-feedback" role="alert">
                     <strong>{{ $message }}</strong>
                 </span>
             @enderror
         </div>
     </div>
-    
+
     <div class="row mb-3">
         <label for="price" class="col-md-4 col-form-label text-md-end">
             {{ __('Price') }}
@@ -62,21 +63,12 @@
     </div>
 </form>
 
-
 <script>
     const form = document.getElementById('checkout-form');
     const methodSelect = document.getElementById('method');
-    const cryptoSelect = document.getElementById('crypto_currency');
-    const cryptoRow = cryptoSelect.closest('.row');
+    const currencySelect = document.getElementById('currency');
     const payBase = "{{ url('orders/pay') }}/";
     const orderId = "{{ $order->id }}";
-
-    // The cryptocurrency picker is only relevant for NOWPayments.
-    function toggleCryptoRow() {
-        cryptoRow.style.display = methodSelect.value === 'NOWPayment' ? '' : 'none';
-    }
-    methodSelect.addEventListener('change', toggleCryptoRow);
-    toggleCryptoRow();
 
     // Build the action URL from the current selections right before submitting.
     form.addEventListener('submit', function (e) {
@@ -85,11 +77,7 @@
             e.preventDefault();
             return;
         }
-        let action = payBase + method + '/' + orderId;
-        if (method === 'NOWPayment' && cryptoSelect.value) {
-            action += '/' + cryptoSelect.value;
-        }
-        form.action = action;
+        form.action = payBase + method + '/' + orderId + '/' + currencySelect.value;
     });
 </script>
 @endsection
