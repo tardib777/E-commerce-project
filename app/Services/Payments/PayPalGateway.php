@@ -17,7 +17,7 @@ class PayPalGateway implements PaymentGateway
         $this->provider->setApiCredentials(config('paypal'));
     }
 
-    public function pay(Order $order)
+    public function pay(Order $order, string $currency = 'USD')
     {
         $this->provider->getAccessToken();
         $response = $this->provider->createOrder([
@@ -28,7 +28,7 @@ class PayPalGateway implements PaymentGateway
             ],
             "purchase_units" => [[
                 "amount" => [
-                    "currency_code" => "USD",
+                    "currency_code" => $currency,
                     "value" => $order->total_price,
                 ],
             ]],

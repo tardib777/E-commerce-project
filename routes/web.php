@@ -3,12 +3,8 @@
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\PayPalController;
-use App\Http\Controllers\StripePaymentController;
 
 Auth::routes(['verify' => true]);
 Route::middleware(['auth','verified'])->group(function(){
@@ -26,10 +22,9 @@ Route::middleware(['auth','verified'])->group(function(){
     Route::delete('/orders/product/delete/{order}/{product_id}',[OrderController::class,'removeProduct'])->name('orders.removeProduct');
     Route::put('/orders/cancel/{order_id}',[OrderController::class,'cancel'])->name('orders.cancel');
     Route::get('/orders/checkout/{order}',[OrderController::class,'checkout'])->name('orders.checkout');
-    Route::get('/orders/pay/{method}/{order_id}/{crypto_currency?}', [OrderController::class, 'pay'])->name('orders.payment.pay');
+    Route::get('/orders/pay/{method}/{order_id}/{currency?}', [OrderController::class, 'pay'])->name('orders.payment.pay');
     Route::get('/orders/success/{method}/{order_id}/{request?}', [OrderController::class, 'success'])->name('orders.payment.success');
-    Route::get('/orders/cancel/{method}/{order_id}/{NP_id?}', [OrderController::class, 'cancel'])->name('orders.payment.cancel');
-    Route::post('/nowpayment/callback', [OrderController::class, 'nowPaymentCallback'])->name('orders.payment.nowpayment.callback')->withoutMiddleware([VerifyCsrfToken::class]);
+    Route::get('/orders/payment/cancel/{method}/{order_id}', [OrderController::class, 'cancelPayment'])->name('orders.payment.cancel');
     });
     Route::middleware('role:admin|customer')->group(function(){
             //Route::get('/orders/index',[OrderController::class,'index'])->name('orders.index');

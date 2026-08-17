@@ -9,9 +9,6 @@ use App\Models\Product;
 use App\Services\Payments\PaymentFactory;
 use Exception;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
-use Log;
 class OrderController extends Controller
 {
     protected $orderService;
@@ -59,14 +56,17 @@ class OrderController extends Controller
     }
     public function checkout(Order $order){
         $gateways = config('payments.gateways');
-        $currencies=Http::withHeader('x-api-key',config('NOWPayment.sandbox.api_key'))->get('https://api-sandbox.nowpayments.io/v1/merchant/coins')->json()['selectedCurrencies'];
+        $currencies = config('payments.currencies');
         return view('orders.Checkout',['order' => $order, 'gateways' => $gateways, 'currencies' => $currencies]);
     }
-    public function pay($method, $order_id)
+    public function pay($method, $order_id, $currency = 'USD')
     {
         $order = Order::findOrFail($order_id);
+        if (!array_key_exists($currency, config('payments.currencies'))) {
+            abort(422, 'Unsupported currency.');
+        }
         $gateway = PaymentFactory::make($method);
-        return $gateway->pay($order);
+        return $gateway->pay($order, $currency);
     }
 
     public function success(Request $request, $method, $order_id)
@@ -84,43 +84,5 @@ class OrderController extends Controller
         $gateway->cancel($request->all(), $order);
 
         return redirect()->route('orders.index')->with('error', 'Payment canceled.');
-    }
-    public function nowPaymentCallback(Request $request){
-        Log::info('Received NOWPayment callback',$request->headers->all());
-    $signiture=$request->header('x-nowpayments-sig');
-    $payload=file_get_contents('php://input');
-    $computedSignature=hash_hmac('sha512', $payload, config('NOWPayment.sandbox.IPN_key'));
-    if (!hash_equals($computedSignature,$signiture)) {
-        return response()->json(['error' => 'Invalid signature'], 401);
-    }
-    $data=$request->all();
-    if(!$data['payment_id'] || !$data['order_id']){
-        Log::error('Missing payment_id or order_id in NOWPayment callback', $data);
-        return response()->json(['error' => 'Missing payment_id or order_id'], 400);
-    }
-    $order=Order::find($data['order_id']);
-    if(!$order){
-        Log::error('Order not found in NOWPayment callback', ['order_id' => $data['order_id']]);
-        return response()->json(['error' => 'Order not found'], 404);
-    }
-        // مثال:
-        if ($data['payment_status'] == 'confirmed') {
-            // ✅ تفعيل الطلب
-            DB::transaction(function () use ($order, $data) {
-                DB::insert('transactions', [
-                    'order_id' => $order->id,
-                    'user_id' => Auth::id(),
-                    'amount' => $order->total_price,
-                    'method' => 'paypal',
-                    'status' => 'paid',
-                    'transaction_id' => $data['token'],
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                $order->update(['status' => 'paid']);
-            }); 
-             return response()->json(['message' => 'Payment confirmed and order activated']);
-        }
-
     }
 }

@@ -437,10 +437,9 @@ Server‑rendered routes defined in **`routes/web.php`**. All routes below the a
 | `DELETE` | `/orders/product/delete/{order}/{product_id}` | `orders.removeProduct` | Remove an item (restores stock) |
 | `PUT` | `/orders/cancel/{order_id}` | `orders.cancel` | Cancel order (restores stock) |
 | `GET` | `/orders/checkout/{order}` | `orders.checkout` | Checkout + gateway/currency selection |
-| `GET` | `/orders/pay/{method}/{order_id}/{crypto_currency?}` | `orders.payment.pay` | Start payment via the chosen gateway |
+| `GET` | `/orders/pay/{method}/{order_id}/{currency?}` | `orders.payment.pay` | Start payment via the chosen gateway (`USD`/`EUR`, default `USD`) |
 | `GET` | `/orders/success/{method}/{order_id}/{request?}` | `orders.payment.success` | Payment success callback |
-| `GET` | `/orders/cancel/{method}/{order_id}/{NP_id?}` | `orders.payment.cancel` | Payment cancel callback |
-| `POST` | `/nowpayment/callback` | `orders.payment.nowpayment.callback` | NOWPayments IPN webhook — **CSRF‑exempt** |
+| `GET` | `/orders/payment/cancel/{method}/{order_id}` | `orders.payment.cancel` | Payment cancel callback |
 
 > All order/payment actions are handled by `App\Http\Controllers\OrderController`. Payment dispatch goes through `PaymentFactory::make($method)`.
 
