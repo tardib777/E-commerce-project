@@ -43,6 +43,12 @@ Route::middleware(['auth','verified'])->group(function(){
 
 });
 
+// Stripe invoice.paid webhook — no user session on the incoming event, so it
+// must stay outside auth/verified middleware and exempt from CSRF.
+Route::post('/stripe/webhook', [OrderController::class, 'stripeWebhook'])
+    ->name('stripe.webhook')
+    ->withoutMiddleware([VerifyCsrfToken::class]);
+
  Route::get('/home/{id?}', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
  Route::get('/products/show/{id}',[ProductController::class,'show'])->name('products.show');
 Route::get('/',function(){

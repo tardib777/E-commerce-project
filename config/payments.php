@@ -11,7 +11,7 @@ return [
     */
 
     'gateways' => [
-        'visa' => 'Visa (Credit/Debit Card)',
+        'stripe' => 'Stripe (Invoice)',
     ],
 
     /*

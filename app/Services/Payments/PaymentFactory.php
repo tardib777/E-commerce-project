@@ -9,7 +9,7 @@ class PaymentFactory
     public static function make(string $method): PaymentGateway
     {
         return match ($method) {
-            'visa' => new VisaGateway(),
+            'stripe' => new StripeGateway(),
             default => throw new \Exception("Unsupported payment method: $method"),
         };
     }

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
             $table->decimal('amount', 10, 2);
-            $table->enum('method',['NOWPayment']);
+            $table->enum('method',['stripe']);
             $table->string('status');
             $table->string('transaction_id')->nullable();
             $table->timestamps();

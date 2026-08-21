@@ -9,6 +9,10 @@ use App\Models\Product;
 use App\Services\Payments\PaymentFactory;
 use Exception;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Stripe\Stripe;
+use Stripe\Webhook;
+use Stripe\Exception\SignatureVerificationException;
 class OrderController extends Controller
 {
     protected $orderService;
@@ -88,5 +92,28 @@ class OrderController extends Controller
         $gateway->cancel($request->all(), $order);
 
         return redirect()->route('orders.index')->with('error', 'Payment canceled.');
+    }
+
+    public function stripeWebhook(Request $request)
+    {
+        Stripe::setApiKey(config('services.stripe.secret'));
+
+        try {
+            $event = Webhook::constructEvent(
+                $request->getContent(),
+                $request->header('Stripe-Signature'),
+                config('services.stripe.webhook_secret')
+            );
+        } catch (SignatureVerificationException|\UnexpectedValueException $e) {
+            Log::warning('Stripe webhook signature verification failed: ' . $e->getMessage());
+            return response('Invalid signature', 400);
+        }
+
+        if ($event->type === 'invoice.paid') {
+            $gateway = PaymentFactory::make('stripe');
+            $gateway->fulfillFromWebhook($event->data->object);
+        }
+
+        return response('OK', 200);
     }
 }
