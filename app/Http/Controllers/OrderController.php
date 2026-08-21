@@ -109,7 +109,7 @@ class OrderController extends Controller
             return response('Invalid signature', 400);
         }
 
-        if ($event->type === 'invoice.paid') {
+        if ($event->type === 'checkout.session.completed') {
             $gateway = PaymentFactory::make('stripe');
             $gateway->fulfillFromWebhook($event->data->object);
         }

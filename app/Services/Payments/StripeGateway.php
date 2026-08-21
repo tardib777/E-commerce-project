@@ -5,17 +5,19 @@ use App\Contracts\PaymentGateway;
 use App\Models\Order;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Stripe\Customer;
-use Stripe\Invoice;
-use Stripe\InvoiceItem;
+use Stripe\Checkout\Session;
 use Stripe\Stripe;
 
 /**
- * Accepts card payments through Stripe Invoices. The customer is billed
- * via a Stripe-hosted invoice page; Stripe has no return URL for hosted
- * invoices, so payment confirmation arrives asynchronously through the
- * /stripe/webhook route (invoice.paid) rather than the success()/cancel()
- * redirect flow the other gateways use.
+ * Accepts card payments through Stripe Checkout. The customer is
+ * redirected to a Stripe-hosted payment page; unlike Stripe Invoices,
+ * Checkout Sessions support success_url/cancel_url, so Stripe redirects
+ * the browser straight back to our success() route once payment
+ * completes. We re-verify the session server-side (via the Stripe API)
+ * before marking the order paid, rather than trusting the redirect
+ * itself. The /stripe/webhook route (checkout.session.completed) marks
+ * the order paid too, so fulfillment still happens even if the customer
+ * closes their browser before the redirect back.
  */
 class StripeGateway implements PaymentGateway
 {
@@ -26,33 +28,42 @@ class StripeGateway implements PaymentGateway
 
     public function pay(Order $order, string $currency = 'USD')
     {
-        $customer = $this->findOrCreateCustomer($order);
-
-        $invoice = Invoice::create([
-            'customer'           => $customer->id,
-            'collection_method'  => 'send_invoice',
-            'days_until_due'     => 1,
-            'auto_advance'       => false,
-            'metadata'           => ['order_id' => (string) $order->id],
+        $session = Session::create([
+            'mode'                => 'payment',
+            'customer_email'      => $order->user->email ?? null,
+            'line_items'          => [[
+                'quantity'   => 1,
+                'price_data' => [
+                    'currency'     => strtolower($currency),
+                    'unit_amount'  => (int) round(((float) $order->total_price) * 100),
+                    'product_data' => ['name' => "Order #{$order->id}"],
+                ],
+            ]],
+            'metadata'    => ['order_id' => (string) $order->id],
+            'success_url' => route('orders.payment.success', ['method' => 'stripe', 'order_id' => $order->id]) . '?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url'  => route('orders.payment.cancel', ['method' => 'stripe', 'order_id' => $order->id]),
         ]);
 
-        InvoiceItem::create([
-            'customer'    => $customer->id,
-            'invoice'     => $invoice->id,
-            'amount'      => (int) round(((float) $order->total_price) * 100),
-            'currency'    => strtolower($currency),
-            'description' => "Order #{$order->id}",
-        ]);
-
-        $invoice = $invoice->finalizeInvoice();
-
-        return redirect()->away($invoice->hosted_invoice_url);
+        return redirect()->away($session->url);
     }
 
     public function success(array $data, Order $order)
     {
-        return redirect()->route('orders.index')
-            ->with('success', 'If your Stripe payment succeeded, your order will update shortly.');
+        $sessionId = $data['session_id'] ?? null;
+        if (!$sessionId) {
+            return redirect()->route('orders.index')->with('error', 'Missing Stripe session.');
+        }
+
+        $session = Session::retrieve($sessionId);
+
+        $matchesOrder = ($session->metadata->order_id ?? null) == $order->id;
+        if (!$matchesOrder || $session->payment_status !== 'paid') {
+            return redirect()->route('orders.index')->with('error', 'Stripe payment not confirmed.');
+        }
+
+        $this->markPaid($order, $session->payment_intent ?: $session->id);
+
+        return redirect()->route('orders.index')->with('success', 'Stripe payment completed successfully!');
     }
 
     public function cancel(array $data, Order $order)
@@ -63,10 +74,10 @@ class StripeGateway implements PaymentGateway
     /**
      * Called from the /stripe/webhook route once Stripe confirms payment.
      */
-    public function fulfillFromWebhook(object $invoice): void
+    public function fulfillFromWebhook(object $session): void
     {
-        $orderId = $invoice->metadata->order_id ?? null;
-        if (!$orderId) {
+        $orderId = $session->metadata->order_id ?? null;
+        if (!$orderId || $session->payment_status !== 'paid') {
             return;
         }
 
@@ -75,7 +86,7 @@ class StripeGateway implements PaymentGateway
             return;
         }
 
-        $this->markPaid($order, $invoice->id);
+        $this->markPaid($order, $session->payment_intent ?: $session->id);
     }
 
     protected function markPaid(Order $order, ?string $transactionId): void
@@ -102,22 +113,5 @@ class StripeGateway implements PaymentGateway
                 $order->update(['status' => 'paid']);
             }
         });
-    }
-
-    protected function findOrCreateCustomer(Order $order): Customer
-    {
-        $email = $order->user->email ?? null;
-
-        if ($email) {
-            $existing = Customer::all(['email' => $email, 'limit' => 1]);
-            if (!empty($existing->data)) {
-                return $existing->data[0];
-            }
-        }
-
-        return Customer::create([
-            'email' => $email,
-            'name'  => trim(($order->user->firstname ?? '') . ' ' . ($order->user->lastname ?? '')) ?: null,
-        ]);
     }
 }
