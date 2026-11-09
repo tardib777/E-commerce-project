@@ -25,7 +25,7 @@ class ProductUpdateRequest extends FormRequest
             'name' => 'sometimes|string|min:3|max:30',
             'description' => 'sometimes|string|min:30|max:1000',
             'price' => 'sometimes|decimal:2',
-            'available_quantity' => 'sometimes|integer',
+            'available_quantity' => 'sometimes|integer|min:0',
             'category_id' => 'sometimes|integer|exists:categories,id',
             'image' => 'sometimes|image'
         ];

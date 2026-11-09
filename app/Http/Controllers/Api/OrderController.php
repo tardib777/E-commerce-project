@@ -41,12 +41,14 @@ class OrderController extends Controller
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|integer|min:1',
         ]);
-        $price=Product::where('id',$data['product_id'])->value('price');
-        $data['price']=$data['quantity']*$price;
-        $status=$this->orderService->addOrRemoveProductToOrder($data,$order_id);
-        if($status == true){
-            return response()->json(["message" => "success"], 201);
-        }
+        // Only the caller's own pending order; stock and price are handled
+        // by OrderService (locked, priced from the product record).
+        $order = \App\Models\Order::where('id', $order_id)
+            ->where('user_id', $request->user()->id)
+            ->where('status', 'pending')
+            ->firstOrFail();
+        $this->orderService->addProductToOrder($data, $order);
+        return response()->json(["message" => "success", "total_price" => $order->fresh()->total_price], 201);
     }
     /*public function deleteItem($orderId, $itemId)
     {

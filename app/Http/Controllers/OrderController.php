@@ -34,12 +34,12 @@ class OrderController extends Controller
     }
     public function addProduct(Request $request)
     {
+        // Price is deliberately not taken from the request: OrderService
+        // prices each line from the product record, and checks stock.
         $data=$request->validate([
             'product_id' => 'required|exists:products,id',
-            'price' => 'required|numeric|min:0',
             'quantity' => 'required|integer|min:1',
         ]);
-        $data['price']=$data['quantity']*$data['price'];
         $order=$this->orderService->GetPendingOrCreate();
         $status=$this->orderService->addProductToOrder($data,$order);
         if($status == true){
@@ -71,6 +71,9 @@ class OrderController extends Controller
 
     public function removeProduct($order,$product_id){
         $order=$this->ownedOrder($order);
+        if ($order->status !== 'pending') {
+            return redirect()->route('orders.index')->with('error', "Order #{$order->id} is {$order->status} and can't be changed.");
+        }
         $status=$this->orderService->removeProductFromOrder($order,$product_id);
         if($status == true){
             return redirect()->route('orders.index');
