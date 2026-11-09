@@ -7,24 +7,24 @@ return [
     | Available Payment Gateways
     |--------------------------------------------------------------------------
     | Each gateway must map to its service key used in PaymentFactory.
-    | The label is what will appear in the checkout dropdown.
+    | The label is what will appear on the checkout page.
     */
 
     'gateways' => [
-        'stripe' => 'Stripe (Invoice)',
+        'stripe' => 'Credit / Debit Card (Visa, Mastercard)',
     ],
 
     /*
     |--------------------------------------------------------------------------
     | Available Currencies
     |--------------------------------------------------------------------------
-    | Real (fiat) currencies customers can pay with. Each key must be a
-    | currency code the selected gateway accepts.
+    | Product prices are stored in USD, so checkout charges in USD only.
+    | (Offering another currency without converting the amount would
+    | charge the same number in that currency.)
     */
 
     'currencies' => [
         'USD' => 'US Dollar ($)',
-        'EUR' => 'Euro (€)',
     ],
 
 ];

@@ -46,15 +46,41 @@ class OrderController extends Controller
             return view('orders.success');
         }
     }
+    /**
+     * Load an order that belongs to the signed-in customer, or 404.
+     * Every customer-facing order action goes through this so one
+     * customer can never view, change, cancel or pay another's order
+     * just by editing the id in the URL.
+     */
+    protected function ownedOrder($orderId): Order
+    {
+        return Order::where('id', $orderId)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+    }
+
+    /**
+     * Only pending orders can be paid; paid/canceled ones are bounced back.
+     */
+    protected function ensurePayable(Order $order): void
+    {
+        if ($order->status !== 'pending') {
+            abort(redirect()->route('orders.index')->with('error', "Order #{$order->id} is {$order->status} and can't be paid."));
+        }
+    }
+
     public function removeProduct($order,$product_id){
-        $order=Order::where('id',$order)->firstOrFail();
+        $order=$this->ownedOrder($order);
         $status=$this->orderService->removeProductFromOrder($order,$product_id);
         if($status == true){
             return redirect()->route('orders.index');
         }
     }
     public function cancel($order_id){
-        $order=Order::where('id',$order_id)->firstOrFail();
+        $order=$this->ownedOrder($order_id);
+        if ($order->status !== 'pending') {
+            return redirect()->route('orders.index')->with('error', "Order #{$order->id} is already {$order->status}.");
+        }
         foreach($order->products as $product){
             $product->available_quantity += $product->pivot->quantity;
             $product->save();
@@ -62,14 +88,20 @@ class OrderController extends Controller
         $order->update(['status'=>'canceled']);
         return redirect()->route('orders.index');
     }
-    public function checkout(Order $order){
+    public function checkout($order){
+        $order = $this->ownedOrder($order);
+        $this->ensurePayable($order);
         $gateways = config('payments.gateways');
         $currencies = config('payments.currencies');
         return view('orders.Checkout',['order' => $order, 'gateways' => $gateways, 'currencies' => $currencies]);
     }
     public function pay($method, $order_id, $currency = 'USD')
     {
-        $order = Order::findOrFail($order_id);
+        $order = $this->ownedOrder($order_id);
+        $this->ensurePayable($order);
+        if (!array_key_exists($method, config('payments.gateways'))) {
+            abort(422, 'Unsupported payment method.');
+        }
         if (!array_key_exists($currency, config('payments.currencies'))) {
             abort(422, 'Unsupported currency.');
         }
@@ -79,7 +111,7 @@ class OrderController extends Controller
 
     public function success(Request $request, $method, $order_id)
     {
-        $order = Order::findOrFail($order_id);
+        $order = $this->ownedOrder($order_id);
         $gateway = PaymentFactory::make($method);
        return $gateway->success($request->all(), $order);
 
@@ -87,7 +119,7 @@ class OrderController extends Controller
 
     public function cancelPayment(Request $request, $method, $order_id)
     {
-        $order = Order::findOrFail($order_id);
+        $order = $this->ownedOrder($order_id);
         $gateway = PaymentFactory::make($method);
         $gateway->cancel($request->all(), $order);
 

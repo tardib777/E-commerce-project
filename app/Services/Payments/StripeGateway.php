@@ -29,14 +29,15 @@ class StripeGateway implements PaymentGateway
     public function pay(Order $order, string $currency = 'USD')
     {
         $session = Session::create([
-            'mode'                => 'payment',
-            'customer_email'      => $order->user->email ?? null,
-            'line_items'          => [[
+            'mode'                 => 'payment',
+            'payment_method_types' => ['card'], // Visa, Mastercard and other card brands
+            'customer_email'       => $order->user->email ?? null,
+            'line_items'           => [[
                 'quantity'   => 1,
                 'price_data' => [
                     'currency'     => strtolower($currency),
                     'unit_amount'  => (int) round(((float) $order->total_price) * 100),
-                    'product_data' => ['name' => "Order #{$order->id}"],
+                    'product_data' => ['name' => config('app.name', 'Alabalak') . " - Order #{$order->id}"],
                 ],
             ]],
             'metadata'    => ['order_id' => (string) $order->id],

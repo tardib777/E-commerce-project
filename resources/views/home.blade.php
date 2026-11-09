@@ -184,7 +184,9 @@
                         @forelse ($products as $product)
                             <div class="col-md-4 mt-4">
                                 <div class="card h-100 shadow-sm">
-                                    <img src="{{ asset('./storage/'.$product->image) }}" class="card-img-top" alt="{{ $product->name }}">
+                                    <img src="{{ $product->image ? asset('storage/'.$product->image) : asset('assets/images/no-image.svg') }}"
+                                         class="card-img-top" alt="{{ $product->name }}"
+                                         onerror="this.onerror=null;this.src='{{ asset('assets/images/no-image.svg') }}';">
                                     <div class="card-body d-flex flex-column">
                                         <h5 class="card-title">{{ $product->name }}</h5>
                                         <p class="card-text description-clipped" id="desc-{{ $product->id }}">
